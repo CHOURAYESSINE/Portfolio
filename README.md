@@ -1,11 +1,10 @@
 # Yessine Choura — Portfolio
 
-English portfolio covering networks, information security and application development. Content updated from the October 2026 CV.
+English portfolio based on the visual design requested from https://portfolio-dali.vercel.app: purple background, red accents, animated particle network, circular projects button and icon navigation. Professional content comes from Yessine's current CV.
 
-## Preview
-Run `python -m http.server 8080` from the repository root.
+Pages: Home, About, Services, Work, Experience and Contact. The About page has keyboard-accessible tabs; Work has project pagination. Contact opens an email draft and does not submit to a backend.
 
-## Deploy
-Import this repository in Vercel, choose Other, leave the build command empty and use the repository root as the output directory. No secrets or database are required.
+## Hosting
+Static HTML, CSS and JavaScript. Vercel uses `vercel.json` rewrites for direct page URLs. No database or secrets are needed. Reduced-motion preferences disable animation.
 
-The original academic pages remain under `htmls/`. The new homepage is `index.html`.
+Decorative reference assets are under `assets/reference/`; project screenshots and Yessine's photograph are under `assets/images/`. The original academic pages remain under `htmls/`.
