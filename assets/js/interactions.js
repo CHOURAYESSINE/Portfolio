@@ -1,170 +1,151 @@
-// Page-specific listeners are aborted on navigation to avoid accumulating handlers.
+// Values observed in the supplied Dali reference: fadeIn and transition variants,
+// and the exact tsParticles options used by its home page.
 const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
 const baseRender = render;
-let pageController;
-let stopParticles = () => {};
-let transitionId = 0;
+let particleContainer;
+let particleGeneration = 0;
+let controller;
+let navigationGeneration = 0;
 
-render = function (page) {
-  pageController?.abort();
-  stopParticles();
-  pageController = new AbortController();
-  baseRender(page);
-  const main = document.querySelector('#main');
-  const listen = (target, event, callback) => target.addEventListener(event, callback, { signal: pageController.signal });
-  if (!motionPreference.matches) {
-    main.querySelectorAll('h1,h2,.home-copy>p,.project-circle,.avatar,.about-copy>p,.about-details,.services-grid article,.timeline article,.contact form').forEach((element, index) => {
-      element.animate([{ opacity: 0, transform: 'translateY(28px)' }, { opacity: 1, transform: 'translateY(0)' }], {
-        duration: 650, delay: Math.min(index * 75, 400), easing: 'cubic-bezier(.22,1,.36,1)', fill: 'backwards'
-      });
-    });
-  }
-  if (page === 'home' && !motionPreference.matches && matchMedia('(pointer:fine)').matches) {
-    const scene = main.querySelector('.home');
-    const portrait = main.querySelector('.avatar');
-    const background = main.querySelector('.explosion');
-    listen(scene, 'pointermove', event => {
-      const rect = scene.getBoundingClientRect();
-      const x = (event.clientX - rect.left) / rect.width - .5;
-      const y = (event.clientY - rect.top) / rect.height - .5;
-      portrait.style.translate = `${x * 20}px ${y * 12}px`;
-      background.style.translate = `${-x * 8}px ${-y * 6}px`;
-    });
-    listen(scene, 'pointerleave', () => { portrait.style.translate = background.style.translate = '0px 0px'; });
-    const circle = main.querySelector('.project-circle');
-    listen(circle, 'pointermove', event => {
-      const rect = circle.getBoundingClientRect();
-      circle.style.translate = `${(event.clientX - rect.left - rect.width / 2) * .12}px ${(event.clientY - rect.top - rect.height / 2) * .12}px`;
-    });
-    listen(circle, 'pointerleave', () => { circle.style.translate = '0px 0px'; });
-  }
-  if (page === 'work') enhanceGallery(main, listen);
-  if (page === 'about') {
-    main.querySelectorAll('[role=tab]').forEach(tab => listen(tab, 'click', () => {
-      const panel = document.getElementById(tab.getAttribute('aria-controls'));
-      if (!motionPreference.matches) panel.animate([{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 350 });
-    }));
-  }
+const referenceParticles = {
+  fullScreen: { enable: false }, background: { color: { value: '' } }, fpsLimit: 120,
+  interactivity: { detectsOn: 'window',
+    events: { onClick: { enable: false, mode: 'push' }, onHover: { enable: true, mode: 'repulse' }, resize: true },
+    modes: { push: { quantity: 90 }, repulse: { distance: 200, duration: .4 } }
+  },
+  particles: {
+    color: { value: '#e68e2e' },
+    links: { color: '#f5d393', distance: 150, enable: true, opacity: .5, width: 1 },
+    collisions: { enable: true },
+    move: { direction: 'none', enable: true, outModes: { default: 'bounce' }, random: false, speed: 1, straight: false },
+    number: { density: { enable: true, area: 800 }, value: 80 },
+    opacity: { value: .5 }, shape: { type: 'circle' }, size: { value: { min: 1, max: 5 } }
+  }, detectRetina: true
 };
-
-// Capture internal navigation before the original router, then reveal the new page.
-document.addEventListener('click', async event => {
-  const link = event.target.closest('a[data-page]');
-  if (!link || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
-  event.preventDefault();
-  event.stopImmediatePropagation();
-  if (link.dataset.page === document.body.dataset.page) return;
-  history.pushState({}, '', link.getAttribute('href'));
-  const id = ++transitionId;
-  if (motionPreference.matches) { render(link.dataset.page); return; }
-  const overlay = document.createElement('div');
-  overlay.className = 'page-transition';
-  overlay.setAttribute('aria-hidden', 'true');
-  for (let index = 0; index < 3; index++) overlay.append(document.createElement('span'));
-  document.body.append(overlay);
-  const bars = [...overlay.children];
-  await Promise.all(bars.map((bar, index) => bar.animate([{ transform: 'translateY(100%)' }, { transform: 'translateY(0)' }], { duration: 280, delay: index * 45, easing: 'cubic-bezier(.76,0,.24,1)', fill: 'forwards' }).finished));
-  if (id === transitionId) {
-    render(link.dataset.page);
-    const main = document.querySelector('#main'); main.tabIndex = -1; main.focus({ preventScroll: true });
-  }
-  await Promise.all(bars.map((bar, index) => bar.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-100%)' }], { duration: 340, delay: index * 45, easing: 'cubic-bezier(.76,0,.24,1)', fill: 'forwards' }).finished));
-  overlay.remove();
-}, true);
-window.addEventListener('popstate', () => { transitionId++; });
-motionPreference.addEventListener('change', () => render(current()));
-
-function enhanceGallery(main, listen) {
-  const grid = main.querySelector('.project-grid');
-  const cards = [...grid.querySelectorAll('.project')];
-  const previous = main.querySelector('[aria-label="Previous projects"]');
-  const next = main.querySelector('[aria-label="Next projects"]');
-  const total = Math.ceil(cards.length / 4);
-  const dots = document.createElement('div'); dots.className = 'gallery-dots';
-  dots.setAttribute('role', 'group'); dots.setAttribute('aria-label', 'Project pages');
-  function position() { return Number(main.querySelector('#work-position').textContent.split('/')[0]) - 1; }
-  function animate() {
-    [...dots.children].forEach((dot, index) => dot.setAttribute('aria-pressed', String(index === position())));
-    cards.filter(card => !card.hidden).forEach((card, index) => {
-      if (!motionPreference.matches) card.animate([{ opacity: 0, transform: 'translateX(25px)' }, { opacity: 1, transform: 'translateX(0)' }], { duration: 400, delay: index * 65, fill: 'backwards' });
-    });
-  }
-  for (let index = 0; index < total; index++) {
-    const dot = document.createElement('button'); dot.type = 'button'; dot.setAttribute('aria-label', `Project page ${index + 1}`);
-    listen(dot, 'click', () => { if (position() !== index) next.click(); }); dots.append(dot);
-  }
-  main.querySelector('.pager').after(dots);
-  listen(previous, 'click', animate); listen(next, 'click', animate);
-  grid.tabIndex = 0; grid.setAttribute('aria-label', 'Projects. Use left and right arrow keys to change pages.');
-  listen(grid, 'keydown', event => {
-    if (event.target !== grid || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
-    event.preventDefault(); (event.key === 'ArrowRight' ? next : previous).click();
-  });
-  let touch;
-  listen(grid, 'pointerdown', event => { if (event.pointerType === 'touch') touch = { x: event.clientX, y: event.clientY }; });
-  listen(grid, 'pointerup', event => {
-    if (!touch) return;
-    const dx = event.clientX - touch.x, dy = event.clientY - touch.y; touch = null;
-    if (Math.abs(dx) > 65 && Math.abs(dx) > Math.abs(dy) * 1.5) (dx < 0 ? next : previous).click();
-  });
-  listen(grid, 'pointercancel', () => { touch = null; });
-  cards.forEach((card, index) => {
-    const button = document.createElement('button'); button.type = 'button'; button.className = 'details-toggle'; button.textContent = '+';
-    button.setAttribute('aria-label', 'Details: ' + card.querySelector('h3').textContent); button.setAttribute('aria-expanded', 'false');
-    const details = card.querySelector('.project-body'); details.id = `project-details-${index}`; button.setAttribute('aria-controls', details.id); card.append(button);
-    listen(button, 'click', () => {
-      const open = card.classList.toggle('details-open'); button.setAttribute('aria-expanded', String(open)); button.textContent = open ? '−' : '+';
-    });
-    listen(card, 'keydown', event => { if (event.key === 'Escape') { card.classList.remove('details-open'); button.setAttribute('aria-expanded', 'false'); button.textContent = '+'; button.focus(); } });
-    if (!motionPreference.matches && matchMedia('(pointer:fine)').matches) {
-      listen(card, 'pointermove', event => {
-        const rect = card.getBoundingClientRect();
-        card.style.transform = `perspective(900px) rotateX(${-(event.clientY - rect.top - rect.height / 2) / rect.height * 5}deg) rotateY(${(event.clientX - rect.left - rect.width / 2) / rect.width * 5}deg)`;
-      });
-      listen(card, 'pointerleave', () => { card.style.transform = ''; });
-    }
-  });
-  animate();
-}
 
 particles = function () {
-  const canvas = document.querySelector('#particles'), context = canvas.getContext('2d');
-  let width, height, nodes = [], animation, running = false;
-  const pointer = { x: -1000, y: -1000 };
-  function draw() {
-    context.clearRect(0, 0, width, height);
-    nodes.forEach((node, index) => {
-      if (!motionPreference.matches) {
-        const dx = node.x - pointer.x, dy = node.y - pointer.y, distance = Math.hypot(dx, dy);
-        if (distance > 0 && distance < 100) { node.x += dx / distance * (1 - distance / 100) * 1.5; node.y += dy / distance * (1 - distance / 100) * 1.5; }
-        node.x += node.vx; node.y += node.vy;
-        if (node.x < 0 || node.x > width) node.vx *= -1;
-        if (node.y < 0 || node.y > height) node.vy *= -1;
-        node.x = Math.max(0, Math.min(width, node.x)); node.y = Math.max(0, Math.min(height, node.y));
-      }
-      context.beginPath(); context.arc(node.x, node.y, node.radius, 0, Math.PI * 2); context.fillStyle = '#c28a42aa'; context.fill();
-      for (let next = index + 1; next < nodes.length; next++) {
-        const other = nodes[next], distance = Math.hypot(node.x - other.x, node.y - other.y);
-        if (distance < 145) { context.beginPath(); context.moveTo(node.x, node.y); context.lineTo(other.x, other.y); context.strokeStyle = `rgba(180,175,205,${(1 - distance / 145) * .3})`; context.lineWidth = .7; context.stroke(); }
-      }
-      const distance = Math.hypot(node.x - pointer.x, node.y - pointer.y);
-      if (distance < 160 && !motionPreference.matches) { context.beginPath(); context.moveTo(node.x, node.y); context.lineTo(pointer.x, pointer.y); context.strokeStyle = `rgba(241,48,36,${(1 - distance / 160) * .5})`; context.stroke(); }
-    });
+  const generation = ++particleGeneration;
+  const options = structuredClone(referenceParticles);
+  if (motionPreference.matches) {
+    options.particles.move.enable = false;
+    options.interactivity.events.onHover.enable = false;
   }
-  function resize() {
-    width = canvas.clientWidth; height = canvas.clientHeight;
-    const ratio = Math.min(devicePixelRatio || 1, 2); canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio); context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    nodes = Array.from({ length: width < 700 ? 48 : 95 }, () => ({ x: Math.random() * width, y: Math.random() * height, vx: (Math.random() - .5) * .45, vy: (Math.random() - .5) * .45, radius: Math.random() * 3 + 1 }));
-    if (motionPreference.matches) draw();
-  }
-  function tick() { if (!running) return; draw(); animation = requestAnimationFrame(tick); }
-  function visibility() { running = !document.hidden && !motionPreference.matches; cancelAnimationFrame(animation); if (running) tick(); }
-  const signal = pageController.signal;
-  window.addEventListener('resize', resize, { signal }); document.addEventListener('visibilitychange', visibility, { signal });
-  canvas.parentElement.addEventListener('pointermove', event => { const rect = canvas.getBoundingClientRect(); pointer.x = event.clientX - rect.left; pointer.y = event.clientY - rect.top; }, { signal });
-  canvas.parentElement.addEventListener('pointerleave', () => { pointer.x = pointer.y = -1000; }, { signal });
-  resize(); visibility();
-  stopParticles = () => { running = false; cancelAnimationFrame(animation); };
+  tsParticles.load('particles', options).then(container => {
+    if (generation !== particleGeneration) { container?.destroy(); return; }
+    particleContainer = container;
+  }).catch(error => console.error('Particle background could not start', error));
 };
 
+function fade(element, direction, delay, duration = 1400) {
+  if (!element || motionPreference.matches) return;
+  const x = direction === 'left' ? 80 : direction === 'right' ? -80 : 0;
+  const y = direction === 'up' ? 80 : direction === 'down' ? -80 : 0;
+  element.animate([{ opacity: 0, transform: `translate(${x}px,${y}px)` }, { opacity: 1, transform: 'translate(0,0)' }], {
+    duration, delay, easing: 'cubic-bezier(.25,.25,.25,.75)', fill: 'backwards'
+  });
+}
+
+render = function(page) {
+  controller?.abort();
+  controller = new AbortController();
+  ++particleGeneration;
+  particleContainer?.destroy();
+  particleContainer = null;
+  baseRender(page);
+  const main = document.querySelector('#main');
+  if (page === 'home') {
+    fade(main.querySelector('h1'), 'down', 200);
+    fade(main.querySelector('.home-copy>p'), 'down', 300);
+    fade(main.querySelector('.project-circle'), 'down', 400);
+    fade(main.querySelector('.avatar'), 'up', 500, 1000);
+  } else if (page === 'about') {
+    fade(main.querySelector('.about-copy'), 'right', 200);
+    fade(main.querySelector('.about-details'), 'left', 400);
+  } else {
+    fade(main.querySelector('h2'), 'down', 200);
+    fade(main.querySelector('.page-copy>p,.contact>p'), 'down', 300);
+    fade(main.querySelector('.work-area,.services-grid,.timeline,form'), 'left', 400);
+  }
+  if (page === 'work') {
+    const grid = main.querySelector('.project-grid');
+    const prev = main.querySelector('[aria-label="Previous projects"]');
+    const next = main.querySelector('[aria-label="Next projects"]');
+    const dots = document.createElement('div'); dots.className = 'gallery-dots';
+    dots.setAttribute('role', 'group'); dots.setAttribute('aria-label', 'Project pages');
+    const signal = controller.signal;
+    const listen = (target, event, callback) => target.addEventListener(event, callback, { signal });
+    const count = Math.ceil(grid.children.length / 4);
+    const currentPosition = () => Number(main.querySelector('#work-position').textContent.split('/')[0]) - 1;
+    function update() {
+      [...dots.children].forEach((dot, index) => dot.setAttribute('aria-pressed', String(index === currentPosition())));
+      fade(grid, 'left', 0, 450);
+    }
+    for (let index = 0; index < count; index++) {
+      const dot = document.createElement('button'); dot.type = 'button'; dot.setAttribute('aria-label', `Project page ${index + 1}`);
+      listen(dot, 'click', () => { let attempts = count; while (currentPosition() !== index && attempts-- > 0) next.click(); }); dots.append(dot);
+    }
+    main.querySelector('.pager').after(dots);
+    listen(prev, 'click', update); listen(next, 'click', update); update();
+    grid.tabIndex = 0; grid.setAttribute('aria-label', 'Projects. Left and right arrows change pages.');
+    listen(grid, 'keydown', event => {
+      if (event.target === grid && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+        event.preventDefault(); (event.key === 'ArrowRight' ? next : prev).click();
+      }
+    });
+    let touch;
+    listen(grid, 'pointerdown', event => { if (event.pointerType === 'touch') touch = [event.clientX, event.clientY]; });
+    listen(grid, 'pointerup', event => {
+      if (!touch) return;
+      const dx = event.clientX - touch[0], dy = event.clientY - touch[1]; touch = null;
+      if (Math.abs(dx) > 65 && Math.abs(dx) > Math.abs(dy) * 1.5) (dx < 0 ? next : prev).click();
+    });
+    listen(grid, 'pointercancel', () => { touch = null; });
+  }
+};
+
+function createCurtain() {
+  const curtain = document.createElement('div'); curtain.className = 'reference-transition'; curtain.setAttribute('aria-hidden', 'true');
+  for (let index = 0; index < 3; index++) curtain.append(document.createElement('span'));
+  document.body.append(curtain);
+  return curtain;
+}
+
+async function navigateReference(page, href, push = true) {
+  const generation = ++navigationGeneration;
+  document.querySelectorAll('.reference-transition').forEach(element => element.remove());
+  if (push) history.pushState({}, '', href);
+  if (motionPreference.matches) { render(page); return; }
+  const curtain = createCurtain();
+  const bars = [...curtain.children];
+  // The reference sweeps horizontally with three purple layers, not vertical bars.
+  await Promise.all(bars.map((bar, index) => bar.animate([
+    { transform: 'translateX(-100%)' }, { transform: 'translateX(0)' }
+  ], { duration: 600, delay: (index + 1) * 200, easing: 'ease-in-out', fill: 'forwards' }).finished.catch(() => {})));
+  if (generation !== navigationGeneration) { curtain.remove(); return; }
+  render(page);
+  const main = document.querySelector('#main'); main.tabIndex = -1; main.focus({ preventScroll: true });
+  await Promise.all(bars.map((bar, index) => bar.animate([
+    { transform: 'translateX(0)' }, { transform: 'translateX(100%)' }
+  ], { duration: 600, delay: (index + 1) * 200, easing: 'ease-in-out', fill: 'forwards' }).finished.catch(() => {})));
+  curtain.remove();
+}
+
+document.addEventListener('click', event => {
+  const link = event.target.closest('a[data-page]');
+  if (!link || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
+  event.preventDefault(); event.stopImmediatePropagation();
+  if (link.dataset.page !== document.body.dataset.page) navigateReference(link.dataset.page, link.getAttribute('href'));
+}, true);
+window.addEventListener('popstate', event => {
+  event.stopImmediatePropagation(); navigateReference(current(), location.pathname, false);
+}, true);
+motionPreference.addEventListener('change', () => render(current()));
 render(current());
+
+// Match the reference's initial layered reveal as well as page changes.
+if (!motionPreference.matches) {
+  const curtain = createCurtain();
+  Promise.all([...curtain.children].map((bar, index) => bar.animate([
+    { transform: 'translateX(0)' }, { transform: 'translateX(100%)' }
+  ], { duration: 600, delay: (index + 1) * 200, easing: 'ease-in-out', fill: 'both' }).finished.catch(() => {}))).then(() => curtain.remove());
+}
