@@ -6,7 +6,7 @@
     'Yessine Choura home': 'Accueil de Yessine Choura', 'Email': 'E-mail',
     'Explore my projects': 'Découvrir mes projets',
     "Hello, I'm Yessine Choura. I'm a computer engineering student actively searching for a final-year internship in networks and cybersecurity starting in February 2027. I enjoy building sites & apps.": "Bonjour, je suis Yessine Choura, étudiant en ingénierie informatique. Je recherche un stage de fin d’études en réseaux et cybersécurité à partir de février 2027. J’aime créer des sites et des applications.",
-    'Me': 'moi', 'Background': 'Parcours', 'Skills': 'Compétences', 'Education': 'Formation',
+    'Me': 'de moi', 'Background': 'Parcours', 'Skills': 'Compétences', 'Education': 'Formation',
     'Currently a computer engineering student at the International Institute of Technology (IIT) in Sfax, Tunisia, specializing in Network Administration and Information Security.': 'Étudiant en ingénierie informatique à l’Institut International de Technologie (IIT) de Sfax, en Tunisie, spécialisé en administration des réseaux et sécurité de l’information.',
     'Actively searching for a final-year internship opportunity starting in February 2027.': 'Je recherche un stage de fin d’études à partir de février 2027.',
     "Through internships and academic projects, I've gained experience in web development, network security and deployment. I am always looking to learn new technologies.": 'Mes stages et projets académiques m’ont permis d’acquérir de l’expérience en développement web, sécurité réseau et déploiement. Je souhaite toujours apprendre de nouvelles technologies.',
