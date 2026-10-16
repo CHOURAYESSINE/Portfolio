@@ -1,6 +1,8 @@
 // English is the initial language. A visitor may explicitly choose French.
 (() => {
   const french = {
+    'Cisco · October 2026': 'Cisco · Octobre 2026',
+    'Amazon Web Services Training and Certification · May 2026': 'Amazon Web Services Training and Certification · Mai 2026',
     'Skip to content': 'Aller au contenu', 'Home': 'Accueil', 'About': 'À propos',
     'Work': 'Projets', 'Experience': 'Expérience', 'Main navigation': 'Navigation principale',
     'Yessine Choura home': 'Accueil de Yessine Choura', 'Email': 'E-mail',
