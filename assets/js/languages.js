@@ -1,8 +1,13 @@
 // English is the initial language. A visitor may explicitly choose French.
 (() => {
   const french = {
-    'Cisco · October 2026': 'Cisco · Octobre 2026',
-    'Amazon Web Services Training and Certification · May 2026': 'Amazon Web Services Training and Certification · Mai 2026',
+    "CCNA: Enterprise Networking, Security, and Automation · Cisco · October 2026": "CCNA: Enterprise Networking, Security, and Automation · Cisco · Octobre 2026",
+    "AWS Academy Cloud Foundations (Training Badge) · AWS · May 2026": "AWS Academy Cloud Foundations (Training Badge) · AWS · Mai 2026",
+    "CCNA: Switching, Routing, and Wireless Essentials · Cisco · April 2026": "CCNA: Switching, Routing, and Wireless Essentials · Cisco · Avril 2026",
+    "IT Specialist — Python · Certiport, Pearson VUE · October 2024": "IT Specialist — Python · Certiport, Pearson VUE · Octobre 2024",
+    "Scrum Fundamentals Certified (SFC) · SCRUMstudy · May 2023": "Scrum Fundamentals Certified (SFC) · SCRUMstudy · Mai 2023",
+    "IoT Training · IEEE IIT Student Branch": "Formation IoT · IEEE IIT Student Branch",
+
     'Skip to content': 'Aller au contenu', 'Home': 'Accueil', 'About': 'À propos',
     'Work': 'Projets', 'Experience': 'Expérience', 'Main navigation': 'Navigation principale',
     'Yessine Choura home': 'Accueil de Yessine Choura', 'Email': 'E-mail',
